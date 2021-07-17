@@ -2,7 +2,7 @@
 ### Reassemble: structural information -> system
 ###
 
-function pantelides_reassemble(sys, eqassoc, assign)
+function pantelides_reassemble(sys::ODESystem, eqassoc, assign)
     s = structure(sys)
     @unpack fullvars, varassoc = s
     # Step 1: write derivative equations
@@ -15,7 +15,7 @@ function pantelides_reassemble(sys, eqassoc, assign)
     fill!(out_vars, nothing)
     out_vars[1:length(fullvars)] .= fullvars
 
-    D = Differential(independent_variable(sys))
+    D = Differential(get_iv(sys))
 
     for (i, v) in enumerate(varassoc)
         # fullvars[v] = D(fullvars[i])
@@ -75,11 +75,11 @@ end
 
 Perform Pantelides algorithm.
 """
-function pantelides!(sys; maxiters = 8000)
+function pantelides!(sys::ODESystem; maxiters = 8000)
     s = structure(sys)
     # D(j) = assoc[j]
     @unpack graph, fullvars, varassoc = s
-    iv = independent_variable(sys)
+    iv = get_iv(sys)
     neqs = nsrcs(graph)
     nvars = length(varassoc)
     vcolor = falses(nvars)

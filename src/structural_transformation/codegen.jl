@@ -208,7 +208,7 @@ function build_torn_function(
               out
               DestructuredArgs(states, inbounds=!checkbounds)
               DestructuredArgs(parameters(sys), inbounds=!checkbounds)
-              independent_variable(sys)
+              independent_variables(sys)
              ],
              [],
              Let(
@@ -312,7 +312,7 @@ function build_observed_function(
         [
          DestructuredArgs(diffvars, inbounds=!checkbounds)
          DestructuredArgs(parameters(sys), inbounds=!checkbounds)
-         independent_variable(sys)
+         independent_variables(sys)
         ],
         [],
         Let(

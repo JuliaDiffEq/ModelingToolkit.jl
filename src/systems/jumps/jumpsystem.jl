@@ -25,7 +25,7 @@ j₃      = MassActionJump(2*β+γ, [R => 1], [S => 1, R => -1])
 js      = JumpSystem([j₁,j₂,j₃], t, [S,I,R], [β,γ])
 ```
 """
-struct JumpSystem{U <: ArrayPartition} <: AbstractSystem
+struct JumpSystem{U <: ArrayPartition} <: AbstractTimeDependentSystem
     """
     The jumps of the system. Allowable types are `ConstantRateJump`,
     `VariableRateJump`, `MassActionJump`.
@@ -98,9 +98,9 @@ function JumpSystem(eqs, iv, states, ps;
     JumpSystem{typeof(ap)}(ap, value(iv), states, ps, observed, name, systems, defaults, connection_type)
 end
 
-function generate_rate_function(js, rate)
+function generate_rate_function(js::JumpSystem, rate)
     rf = build_function(rate, states(js), parameters(js),
-                   independent_variable(js),
+                   get_iv(js),
                    conv = states_to_sym(states(js)),
                    expression=Val{true})
 end
@@ -111,10 +111,10 @@ function add_integrator_header()
   expr -> Func([DestructuredArgs(expr.args, integrator, inds=[:u, :u, :p, :t])], [], expr.body)
 end
 
-function generate_affect_function(js, affect, outputidxs)
+function generate_affect_function(js::JumpSystem, affect, outputidxs)
     bf = build_function(map(x->x isa Equation ? x.rhs : x , affect), states(js),
                    parameters(js),
-                   independent_variable(js),
+                   get_iv(js),
                    expression=Val{true},
                    wrap_code=add_integrator_header(),
                    outputidxs=outputidxs)[2]

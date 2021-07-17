@@ -133,7 +133,7 @@ function generate_diffusion_function(sys::SDESystem, dvs = states(sys), ps = par
     return build_function(get_noiseeqs(sys),
                           map(x->time_varying_as_func(value(x), sys), dvs),
                           map(x->time_varying_as_func(value(x), sys), ps),
-                          independent_variable(sys); kwargs...)
+                          get_iv(sys); kwargs...)
 end
 
 """

@@ -45,8 +45,8 @@ Optimal Transport Approach
 Abhishek Halder, Kooktae Lee, and Raktim Bhattacharya
 https://abhishekhalder.bitbucket.io/F16ACC2013Final.pdf
 """
-function liouville_transform(sys)
-      t = independent_variable(sys)
+function liouville_transform(sys::AbstractODESystem)
+      t = get_iv(sys)
       @variables trJ
       D = ModelingToolkit.Differential(t)
       neweq = D(trJ) ~ trJ*-tr(calculate_jacobian(sys))

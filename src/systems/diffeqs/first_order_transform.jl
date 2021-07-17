@@ -5,7 +5,7 @@ Takes a Nth order ODESystem and returns a new ODESystem written in first order
 form by defining new variables which represent the N-1 derivatives.
 """
 function ode_order_lowering(sys::ODESystem)
-    iv = independent_variable(sys)
+    iv = get_iv(sys)
     eqs_lowered, new_vars = ode_order_lowering(equations(sys), iv, states(sys))
     @set! sys.eqs = eqs_lowered
     @set! sys.states = new_vars

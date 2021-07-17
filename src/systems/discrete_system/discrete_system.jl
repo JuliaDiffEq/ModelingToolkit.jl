@@ -21,7 +21,7 @@ eqs = [next_x ~ σ*(y-x),
 de = DiscreteSystem(eqs,t,[x,y,z],[σ,ρ,β])
 ```
 """
-struct DiscreteSystem <: AbstractSystem
+struct DiscreteSystem <: AbstractTimeDependentSystem
     """The differential equations defining the discrete system."""
     eqs::Vector{Equation}
     """Independent variable."""

@@ -234,8 +234,8 @@ end
 
 # NOTE: equality does not check cached Jacobian
 function Base.:(==)(sys1::ODESystem, sys2::ODESystem)
-    iv1 = independent_variable(sys1)
-    iv2 = independent_variable(sys2)
+    iv1 = get_iv(sys1)
+    iv2 = get_iv(sys2)
     isequal(iv1, iv2) &&
     _eq_unordered(get_eqs(sys1), get_eqs(sys2)) &&
     _eq_unordered(get_states(sys1), get_states(sys2)) &&
@@ -250,7 +250,7 @@ function flatten(sys::ODESystem)
     else
         return ODESystem(
                          equations(sys),
-                         independent_variable(sys),
+                         get_iv(sys),
                          states(sys),
                          parameters(sys),
                          observed=observed(sys),
@@ -292,8 +292,8 @@ function build_explicit_observed_function(
 
     dvs = DestructuredArgs(states(sys), inbounds=!checkbounds)
     ps = DestructuredArgs(parameters(sys), inbounds=!checkbounds)
-    iv = independent_variable(sys)
-    args = iv === nothing ? [dvs, ps] : [dvs, ps, iv]
+    ivs = independent_variables(sys)
+    args = [dvs, ps, ivs...]
 
     ex = Func(
         args, [],

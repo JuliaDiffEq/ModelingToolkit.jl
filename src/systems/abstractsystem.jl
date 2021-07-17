@@ -1,6 +1,6 @@
 """
 ```julia
-calculate_tgrad(sys::AbstractSystem)
+calculate_tgrad(sys::AbstractTimeDependentSystem)
 ```
 
 Calculate the time gradient of a system.
@@ -72,7 +72,7 @@ function calculate_hessian end
 
 """
 ```julia
-generate_tgrad(sys::AbstractSystem, dvs = states(sys), ps = parameters(sys), expression = Val{true}; kwargs...)
+generate_tgrad(sys::AbstractTimeDependentSystem, dvs = states(sys), ps = parameters(sys), expression = Val{true}; kwargs...)
 ```
 
 Generates a function for the time gradient of a system. Extra arguments control
@@ -138,8 +138,28 @@ function getname(t)
         nameof(t)
     end
 end
+#Deprecated
+function independent_variable(sys::AbstractSystem)
+    Base.depwarn("`independent_variable` is deprecated. Use `get_iv` or `independent_variables` instead.",:independent_variable)
+    isdefined(sys, :iv) ? getfield(sys, :iv) : nothing
+end
 
-independent_variable(sys::AbstractSystem) = isdefined(sys, :iv) ? getfield(sys, :iv) : nothing
+#Treat the result as a vector of symbols always
+function independent_variables(sys::AbstractSystem)
+    systype = typeof(sys)
+    @warn "Please specialize `independent_variables` for this type ($systype)."
+    if isdefined(sys, :iv)
+        return [getfield(sys, :iv)]
+    elseif isdefined(sys, :ivs)
+        return sys.ivs
+    else
+        return []
+    end
+end
+
+independent_variables(sys::AbstractTimeDependentSystem) = [getfield(sys, :iv)]
+independent_variables(sys::AbstractTimeIndependentSystem) = []
+independent_variables(sys::AbstractMultivariateSystem) = getfield(sys, :ivs)
 
 function structure(sys::AbstractSystem)
     s = get_structure(sys)
@@ -320,35 +340,35 @@ namespace_controls(sys::AbstractSystem) = controls(sys, controls(sys))
 
 function namespace_defaults(sys)
     defs = defaults(sys)
-    Dict((isparameter(k) ? parameters(sys, k) : states(sys, k)) => namespace_expr(defs[k], nameof(sys), independent_variable(sys)) for k in keys(defs))
+    Dict((isparameter(k) ? parameters(sys, k) : states(sys, k)) => namespace_expr(defs[k], nameof(sys), independent_variables(sys)) for k in keys(defs))
 end
 
 function namespace_equations(sys::AbstractSystem)
     eqs = equations(sys)
     isempty(eqs) && return Equation[]
-    iv = independent_variable(sys)
-    map(eq->namespace_equation(eq,nameof(sys),iv), eqs)
+    ivs = independent_variables(sys)
+    map(eq -> namespace_equation(eq, nameof(sys), ivs), eqs)
 end
 
-function namespace_equation(eq::Equation,name,iv)
-    _lhs = namespace_expr(eq.lhs,name,iv)
-    _rhs = namespace_expr(eq.rhs,name,iv)
+function namespace_equation(eq::Equation, name, ivs)
+    _lhs = namespace_expr(eq.lhs, name, ivs)
+    _rhs = namespace_expr(eq.rhs, name, ivs)
     _lhs ~ _rhs
 end
 
-function namespace_expr(O::Sym,name,iv)
-    isequal(O, iv) ? O : renamespace(name,O)
+function namespace_expr(O::Sym, name, ivs)
+    any(isequal(O), ivs) ? O : renamespace(name, O)
 end
 
 _symparam(s::Symbolic{T}) where {T} = T
-function namespace_expr(O,name,iv) where {T}
+function namespace_expr(O, name, ivs) where {T}
     O = value(O)
     if istree(O)
-        renamed = map(a->namespace_expr(a,name,iv), arguments(O))
+        renamed = map(a -> namespace_expr(a, name, ivs), arguments(O))
         if operation(O) isa Sym
             renamespace(name, O)
         else
-            similarterm(O,operation(O),renamed)
+            similarterm(O, operation(O), renamed)
         end
     else
         O
@@ -376,13 +396,13 @@ function controls(sys::AbstractSystem)
 end
 
 function observed(sys::AbstractSystem)
-    iv = independent_variable(sys)
+    ivs = independent_variables(sys)
     obs = get_observed(sys)
     systems = get_systems(sys)
     [obs;
      reduce(vcat,
-            (map(o->namespace_equation(o, nameof(s), iv), observed(s)) for s in systems),
-            init=Equation[])]
+            (map(o -> namespace_equation.(o, nameof(s), ivs), observed(s)) for s in systems),
+            init = Equation[])]
 end
 
 Base.@deprecate default_u0(x) defaults(x) false
@@ -500,12 +520,6 @@ function toexpr(sys::AbstractSystem)
     expr = Expr(:block)
     stmt = expr.args
 
-    iv = independent_variable(sys)
-    ivname = gensym(:iv)
-    if iv !== nothing
-        push!(stmt, :($ivname = (@variables $(getname(iv)))[1]))
-    end
-
     stsname = gensym(:sts)
     sts = states(sys)
     push_vars!(stmt, stsname, Symbol("@variables"), sts)
@@ -522,7 +536,10 @@ function toexpr(sys::AbstractSystem)
     defs_name = push_defaults!(stmt, defaults(sys), var2name)
 
     if sys isa ODESystem
-        push!(stmt, :($ODESystem($eqs_name, $ivname, $stsname, $psname; defaults=$defs_name)))
+        iv = get_iv(sys)
+        ivname = gensym(:iv)
+        push!(stmt, :($ivname = (@variables $(getname(iv)))[1]))
+        push!(stmt, :($ODESystem($eqs_name, $ivname, $stsname, $psname; defaults = $defs_name)))
     elseif sys isa NonlinearSystem
         push!(stmt, :($NonlinearSystem($eqs_name, $stsname, $psname; defaults=$defs_name)))
     end
@@ -876,7 +893,7 @@ function Base.hash(sys::AbstractSystem, s::UInt)
     s = foldr(hash, get_ps(sys), init=s)
     s = foldr(hash, get_eqs(sys), init=s)
     s = foldr(hash, get_observed(sys), init=s)
-    s = hash(independent_variable(sys), s)
+    s = hash(independent_variables(sys), s)
     return s
 end
 
@@ -888,11 +905,13 @@ by default.
 """
 function extend(sys::AbstractSystem, basesys::AbstractSystem; name::Symbol=nameof(sys))
     T = SciMLBase.parameterless_type(basesys)
-    iv = independent_variable(basesys)
-    if iv === nothing
+    ivs = independent_variables(basesys)
+    if length(ivs) == 0
         sys = convert_system(T, sys)
+    elseif length(ivs) == 1
+        sys = convert_system(T, sys, ivs[1])
     else
-        sys = convert_system(T, sys, iv)
+        throw("Extending multivariate systems is not supported")
     end
     
     eqs = union(equations(basesys), equations(sys))
@@ -902,10 +921,10 @@ function extend(sys::AbstractSystem, basesys::AbstractSystem; name::Symbol=nameo
     defs = merge(defaults(basesys), defaults(sys)) # prefer `sys`
     syss = union(get_systems(basesys), get_systems(sys))
 
-    if iv === nothing
-        T(eqs, sts, ps, observed=obs, defaults=defs, name=name, systems=syss)
-    else
-        T(eqs, iv, sts, ps, observed=obs, defaults=defs, name=name, systems=syss)
+    if length(ivs) == 0
+        T(eqs, sts, ps, observed = obs, defaults = defs, name=name, systems = syss)
+    elseif length(ivs) == 1
+        T(eqs, ivs[1], sts, ps, observed = obs, defaults = defs, name = name, systems = syss)
     end
 end
 

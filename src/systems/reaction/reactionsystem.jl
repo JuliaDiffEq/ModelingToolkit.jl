@@ -135,7 +135,7 @@ Continuing from the example in the [`Reaction`](@ref) definition:
 rs = ReactionSystem(rxs, t, [A,B,C,D], k)
 ```
 """
-struct ReactionSystem <: AbstractSystem
+struct ReactionSystem <: AbstractTimeDependentSystem
     """The reactions defining the system."""
     eqs::Vector{Reaction}
     """Independent variable (usually time)."""

@@ -49,7 +49,7 @@ ReactionSystem
 - `get_eqs(sys)` or `equations(sys)`: The reactions that define the system.
 - `get_states(sys)` or `states(sys)`: The set of chemical species in the system.
 - `get_ps(sys)` or `parameters(sys)`: The parameters of the system.
-- `independent_variable(sys)`: The independent variable of the
+- `get_iv(sys)`: The independent variable of the
   reaction system, usually time.
 
 ## Query Functions

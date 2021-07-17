@@ -24,7 +24,8 @@ generate_function(de)
 
 function test_diffeq_inference(name, sys, iv, dvs, ps)
     @testset "ODESystem construction: $name" begin
-        @test isequal(independent_variable(sys),  value(iv))
+        @test isequal(independent_variables(sys)[1],  value(iv))
+        @test length(independent_variables(sys))==1
         @test isempty(setdiff(Set(states(sys)), Set(value.(dvs))))
         @test isempty(setdiff(Set(parameters(sys)), Set(value.(ps))))
     end

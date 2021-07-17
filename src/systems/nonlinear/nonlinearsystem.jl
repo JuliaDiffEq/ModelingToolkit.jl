@@ -18,7 +18,7 @@ eqs = [0 ~ σ*(y-x),
 ns = NonlinearSystem(eqs, [x,y,z],[σ,ρ,β])
 ```
 """
-struct NonlinearSystem <: AbstractSystem
+struct NonlinearSystem <: AbstractTimeIndependentSystem
     """Vector of equations defining the system."""
     eqs::Vector{Equation}
     """Unknown variables."""

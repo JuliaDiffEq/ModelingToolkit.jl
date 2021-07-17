@@ -16,7 +16,7 @@ op = σ*(y-x) + x*(ρ-z)-y + x*y - β*z
 os = OptimizationSystem(eqs, [x,y,z],[σ,ρ,β])
 ```
 """
-struct OptimizationSystem <: AbstractSystem
+struct OptimizationSystem <: AbstractTimeIndependentSystem
     """Vector of equations defining the system."""
     op::Any
     """Unknown variables."""
@@ -103,7 +103,7 @@ function generate_function(sys::OptimizationSystem, vs = states(sys), ps = param
 end
 
 equations(sys::OptimizationSystem) = isempty(get_systems(sys)) ? get_op(sys) : get_op(sys) + reduce(+,namespace_expr.(get_systems(sys)))
-namespace_expr(sys::OptimizationSystem) = namespace_expr(get_op(sys),nameof(sys),nothing)
+namespace_expr(sys::OptimizationSystem) = namespace_expr(get_op(sys), nameof(sys), [])
 
 hessian_sparsity(sys::OptimizationSystem) = hessian_sparsity(get_op(sys), states(sys))
 
