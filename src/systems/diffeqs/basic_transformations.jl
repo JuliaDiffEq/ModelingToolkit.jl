@@ -54,3 +54,86 @@ function liouville_transform(sys)
       vars = [states(sys);trJ]
       ODESystem(neweqs,t,vars,parameters(sys))
 end
+
+
+
+
+
+
+
+
+"""
+$(TYPEDSIGNATURES)
+
+Generates the set of ODEs after change of variables.
+
+
+Example:
+
+```julia
+using ModelingToolkit, OrdinaryDiffEq, Test
+
+@parameters t α
+@variables x(t)
+D = Differential(t)
+eqs = [D(x) ~ α*x]
+
+tspan = (0., 1.)
+u0 = [x => 1.0]
+p = [α => -0.5]
+
+sys = ODESystem(eqs; defaults=u0)
+prob = ODEProblem(sys, [], tspan, p)
+sol = solve(prob, Tsit5())
+
+@variables z(t)
+forward_subs  = [exp(x) => z]
+backward_subs = [x => log(z)]
+new_sys = changeofvariables(sys, forward_subs, backward_subs)
+@test equations(new_sys)[1] == (D(z) ~ α*z*log(z))
+
+new_prob = ODEProblem(new_sys, [], tspan, p)
+new_sol = solve(new_prob, Tsit5())
+
+@test isapprox(new_sol[x][end], sol[x][end], atol=1e-4)
+```
+
+"""
+function changeofvariables(sys::ODESystem, forward_subs, backward_subs; simplify=false, t0=missing)
+    t = independent_variable(sys)
+
+    old_vars = first.(backward_subs)
+    new_vars = last.(forward_subs)
+    kept_vars = setdiff(states(sys), old_vars)
+    rhs = [eq.rhs for eq in equations(sys)]
+
+    # use: dz/dt = ∂z/∂x dx/dt + ∂z/∂t
+    dzdt = Symbolics.derivative( first.(forward_subs), t )
+    new_eqs = Equation[]
+    for (new_var, ex) in zip(new_vars, dzdt)
+        for ode_eq in equations(sys)
+            ex = substitute(ex, ode_eq.lhs => ode_eq.rhs)
+        end
+        ex = substitute(ex, Dict(forward_subs))
+        ex = substitute(ex, Dict(backward_subs))
+        if simplify
+            ex = Symbolics.simplify(ex, expand=true)
+        end
+        push!(new_eqs, Differential(t)(new_var) ~ ex)
+    end
+
+    defs = get_defaults(sys)
+    new_defs = Dict()
+    for f_sub in forward_subs
+        #TODO call value(...)?
+        ex = substitute(first(f_sub), defs)
+        if !ismissing(t0)
+            ex = substitute(ex, t => t0)
+        end
+        new_defs[last(f_sub)] = ex
+    end
+    return ODESystem(new_eqs;
+                        defaults=new_defs,
+                        observed=vcat(observed(sys),first.(backward_subs) .~ last.(backward_subs))
+                        )
+end

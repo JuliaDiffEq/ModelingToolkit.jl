@@ -161,7 +161,7 @@ export JumpProblem, DiscreteProblem
 export NonlinearSystem, OptimizationSystem
 export ControlSystem
 export alias_elimination, flatten, connect, @connector
-export ode_order_lowering, liouville_transform
+export ode_order_lowering, liouville_transform, changeofvariables
 export runge_kutta_discretize
 export PDESystem
 export Reaction, ReactionSystem, ismassaction, oderatelaw, jumpratelaw
