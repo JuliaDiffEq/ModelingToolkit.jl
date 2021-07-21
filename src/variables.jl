@@ -1,11 +1,15 @@
 struct VariableUnit end
 struct VariableConnectType end
-struct VariabelNoiseType end
-struct VariabelDescriptionType end
+struct VariableNoiseType end
+struct VariableDescriptionType end
+struct VariableInput end
+struct VariableOutput end
 Symbolics.option_to_metadata_type(::Val{:unit}) = VariableUnit
 Symbolics.option_to_metadata_type(::Val{:connect}) = VariableConnectType
-Symbolics.option_to_metadata_type(::Val{:noise}) = VariabelNoiseType
-Symbolics.option_to_metadata_type(::Val{:description}) = VariabelDescriptionType
+Symbolics.option_to_metadata_type(::Val{:noise}) = VariableNoiseType
+Symbolics.option_to_metadata_type(::Val{:description}) = VariableDescriptionType
+Symbolics.option_to_metadata_type(::Val{:input}) = VariableInput
+Symbolics.option_to_metadata_type(::Val{:output}) = VariableOutput
 
 """
 $(SIGNATURES)
